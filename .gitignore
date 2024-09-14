@@ -7,4 +7,4 @@
 
 # Allow directories to be tracked
 !*/
-
+!/*
