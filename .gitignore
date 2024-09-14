@@ -1,0 +1,10 @@
+# Ignore all files in all directories
+**/*
+
+# Except .gitignore and .gitkeep files
+!.gitignore
+!.gitkeep
+
+# Allow directories to be tracked
+!*/
+
