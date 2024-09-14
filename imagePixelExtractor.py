@@ -11,7 +11,7 @@ IMAGE_FILE = "Texas_flag_map.png"
 IM = Image.open(os.path.join(".", "images", IMAGE_FILE))
 
 NUM_LEDS = 58
-NUM_SLICES = 60
+NUM_SLICES = 58
 
 # Get the width and height of the image
 WIDTH, HEIGHT = IM.size
@@ -33,6 +33,7 @@ SLICE_ANGLE = 360.0 / NUM_SLICES
 
 #get a slice from an image, will work on the arguments here...a bit lazy
 def makeSlice(i,k):
+    #print("in slice")
     slice = Image.new('RGBA', (WIDTH, HEIGHT), (0, 0, 0, 0))
     # Create a mask for the slice
     mask = Image.new('L', (WIDTH, HEIGHT), 0)
@@ -53,6 +54,7 @@ def makeSlice(i,k):
 
 #make a sector from a slice, lazy with arguments here too
 def makeSector(slice, j):
+    #print("in sector")
     sector = Image.new('RGBA', (WIDTH,HEIGHT), (0,0,0,0))
     sectorMask = Image.new('L', (WIDTH, HEIGHT), 0)
     sectorDraw = ImageDraw.Draw(sectorMask)
@@ -75,16 +77,22 @@ def makeSector(slice, j):
 
     sector.putalpha(sectorMask)
     sector.paste(slice, (0,0), sectorMask)
-    # sector.show()
+    #sector.show()
     return sector
 
 #get the average RGB color within a sector
 #that numpy mean process is pretty expensive, might look at upgrading this soon
 def getRGB(sector) :
+    #print("in rgb")
     # create a numpy array from the sector canvas
     #each element in the array represents a pixel
     #and has 3-dimensions (height, width, (RGBA))
-    sector_array = np.array(sector)
+    bbox = sector.getbbox()
+    if bbox is None:
+        return '0x000000'
+    cropped_sector = sector.crop(bbox)
+    sector_array = np.array(cropped_sector)
+    #sector_array = np.array(sector)
     #create a masked 3D array of T/F based on the alpha channel (preserves any black in the image)
     alphaMask = sector_array[...,3]!=0
     #create a new 1D array containing only the values with non-zero alpha
@@ -202,8 +210,8 @@ def main():
     LEDs = [0] * (NUM_SECTORS*2)
     image_data = []
     # Create lists to hold the slices and sectors
-    slices = []
-    sectors = []
+    #slices = []
+    #sectors = []
     # loop to create image slices
     #since I have a full rotor that extends across the entire image I only need half of the slices.
     #could update to make portalbe for use cases with only half a rotor (many POV displays use a half)
@@ -212,13 +220,13 @@ def main():
         for k in range(2):
             # makeSlice does it what it says it does
             slice = makeSlice(i,k)
-            slices.append(slice)
+            #slices.append(slice)
             
             #after I make a slice I create two concentric circles to wind up with a sectors
             #these sectors have a span set by the number of slices and a thickness set by the number of LEDs
             for j in range(NUM_SECTORS):
                 sector = makeSector(slice, j)
-                sectors.append(sector)
+                #sectors.append(sector)
                 #sectors are created from the outside converging on the center
                 #but the leds count from 0 - NUMLEDS from edge to edge
                 #if k is zero, the count is normal, but for the mirrored sector (k==1) I need to set the LEDS from NUM_LEDS to the center
@@ -228,6 +236,7 @@ def main():
                 else: 
                     index=j   
                 LEDs[index] = getRGB(sector)
+                del sector
 
         # LEDs[NUM_SECTORS]='0x0'
         #insert a blank pixel into the middle of the strip
@@ -235,15 +244,15 @@ def main():
         #3 options: 1)turn it off, 2)pick an accent color or 3)average all of the middle+1 and middle-1 pixels and it to that
         #LEDs.insert(NUM_SECTORS,'0x000000')
         #add the slice to the image_data
-        image_data.append(LEDs)
+        image_data.append(LEDs.copy())
         #debug info to keep the terminal updated
-        print(i,LEDs)
+        print(i)
         #initialize the list. not neccesary but why not.
         LEDs = [0] * (NUM_SECTORS*2)
 
     ##What actions do you want to take with the data?
     #generate a header file for an arduino
-    makeHeaderFile(image_data)
+    #makeHeaderFile(image_data)
     #save the raw hex values
     # saveRawData(image_data)
     #save the sliced images (useful for debugging)
